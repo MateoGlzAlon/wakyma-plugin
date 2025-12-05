@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 
+	"github.com/MateoGlzAlon/wakyma-plugin/entities"
 	"github.com/MateoGlzAlon/wakyma-plugin/usecases/listallinvoices"
 	"github.com/joho/godotenv"
 )
@@ -24,8 +26,29 @@ func main() {
 			return
 		}
 
+		// Parameters
+		q := r.URL.Query()
+
+		dateFrom := q.Get("dateFrom")
+		dateUntil := q.Get("dateUntil")
+		clientID := q.Get("clientId")
+
+		var limit int
+		if limitStr := q.Get("limit"); limitStr != "" {
+			if l, err := strconv.Atoi(limitStr); err == nil {
+				limit = l
+			}
+		}
+
+		params := entities.Params{
+			DateFrom:  dateFrom,
+			DateUntil: dateUntil,
+			ClientID:  clientID,
+			Limit:     limit,
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		invoices, err := invoiceService.Execute()
+		invoices, err := invoiceService.Execute(params)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
