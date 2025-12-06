@@ -3,6 +3,7 @@ package createreport1
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/xuri/excelize/v2"
 
@@ -17,7 +18,6 @@ func NewCreateReport1Service() *CreateReport1Service {
 }
 
 func (s *CreateReport1Service) Execute(params entities.Params) ([]entities.Invoice, error) {
-
 	listAllInvoicesService := listallinvoices.NewListAllInvoicesService()
 	responseInvoices, err := listAllInvoicesService.Execute(params)
 	if err != nil {
@@ -28,8 +28,12 @@ func (s *CreateReport1Service) Execute(params entities.Params) ([]entities.Invoi
 
 	// 1. Create Excel
 	f := excelize.NewFile()
-	sheet := "Report"
-	f.SetSheetName("Sheet1", sheet)
+
+	mainSheet := "Report_C"
+	tSheet := "Report_T"
+
+	f.SetSheetName("Sheet1", mainSheet)
+	f.NewSheet(tSheet)
 
 	// 2. Write headers
 	headers := []string{
@@ -42,21 +46,37 @@ func (s *CreateReport1Service) Execute(params entities.Params) ([]entities.Invoi
 
 	for col, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(col+1, 1)
-		f.SetCellValue(sheet, cell, h)
+		f.SetCellValue(mainSheet, cell, h)
+		f.SetCellValue(tSheet, cell, h)
 	}
 
 	// 3. Fill rows
-	for row, inv := range invoices {
-		r := row + 2 // Excel starts at 1 (and 1 more for headers)
+	rowC := 2
+	rowT := 2
 
-		f.SetCellValue(sheet, fmt.Sprintf("A%d", r), inv.InvoiceName)
-		f.SetCellValue(sheet, fmt.Sprintf("B%d", r), inv.Client.Name+" "+inv.Client.Surname)
-		f.SetCellValue(sheet, fmt.Sprintf("C%d", r), inv.Pet.Name)
-		f.SetCellValue(sheet, fmt.Sprintf("D%d", r), inv.TotalPriceWithTax)
-		f.SetCellValue(sheet, fmt.Sprintf("E%d", r), inv.InvoiceDate)
+	for _, inv := range invoices {
+		targetSheet := mainSheet
+		row := rowC
+
+		// Si la factura empieza por "T", va a la segunda hoja
+		if strings.HasPrefix(inv.InvoiceName, "T") {
+			targetSheet = tSheet
+			row = rowT
+		}
+
+		f.SetCellValue(targetSheet, fmt.Sprintf("A%d", row), inv.InvoiceName)
+		f.SetCellValue(targetSheet, fmt.Sprintf("B%d", row), inv.Client.Name+" "+inv.Client.Surname)
+		f.SetCellValue(targetSheet, fmt.Sprintf("C%d", row), inv.Pet.Name)
+		f.SetCellValue(targetSheet, fmt.Sprintf("D%d", row), inv.TotalPriceWithTax)
+		f.SetCellValue(targetSheet, fmt.Sprintf("E%d", row), inv.InvoiceDate)
+
+		if targetSheet == mainSheet {
+			rowC++
+		} else {
+			rowT++
+		}
 	}
 
-	// 4. Save file
 	if err := f.SaveAs("report1.xlsx"); err != nil {
 		return nil, fmt.Errorf("error guardando Excel: %w", err)
 	}
