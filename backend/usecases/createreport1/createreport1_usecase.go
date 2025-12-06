@@ -29,11 +29,12 @@ func (s *CreateReport1Service) Execute(params entities.Params) ([]entities.Invoi
 	// 1. Create Excel
 	f := excelize.NewFile()
 
-	mainSheet := "Report_C"
-	tSheet := "Report_T"
+	cSheet := "Clinica"
+	tSheet := "Tienda"
+	pSheet := "Pendientes"
 
-	f.SetSheetName("Sheet1", mainSheet)
 	f.NewSheet(tSheet)
+	f.NewSheet(pSheet)
 
 	// 2. Write headers
 	headers := []string{
@@ -42,24 +43,29 @@ func (s *CreateReport1Service) Execute(params entities.Params) ([]entities.Invoi
 		"Nombre mascota",
 		"Precio",
 		"Fecha factura",
+		"Estado de pago",
 	}
 
 	for col, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(col+1, 1)
-		f.SetCellValue(mainSheet, cell, h)
+		f.SetCellValue(cSheet, cell, h)
 		f.SetCellValue(tSheet, cell, h)
 	}
 
 	// 3. Fill rows
 	rowC := 2
 	rowT := 2
+	rowP := 2
 
 	for _, inv := range invoices {
-		targetSheet := mainSheet
+		targetSheet := cSheet
 		row := rowC
 
-		// Si la factura empieza por "T", va a la segunda hoja
-		if strings.HasPrefix(inv.InvoiceName, "T") {
+		if inv.PaymentStatus == 1 {
+			fmt.Printf("Factura pendiente: %s\n", inv.InvoiceName)
+			targetSheet = pSheet
+			row = rowP
+		} else if strings.HasPrefix(inv.InvoiceName, "T") {
 			targetSheet = tSheet
 			row = rowT
 		}
@@ -69,11 +75,15 @@ func (s *CreateReport1Service) Execute(params entities.Params) ([]entities.Invoi
 		f.SetCellValue(targetSheet, fmt.Sprintf("C%d", row), inv.Pet.Name)
 		f.SetCellValue(targetSheet, fmt.Sprintf("D%d", row), inv.TotalPriceWithTax)
 		f.SetCellValue(targetSheet, fmt.Sprintf("E%d", row), inv.InvoiceDate)
+		f.SetCellValue(targetSheet, fmt.Sprintf("F%d", row), paymentStatusString(inv.PaymentStatus))
 
-		if targetSheet == mainSheet {
+		switch targetSheet {
+		case cSheet:
 			rowC++
-		} else {
+		case tSheet:
 			rowT++
+		case pSheet:
+			rowP++
 		}
 	}
 
@@ -82,4 +92,15 @@ func (s *CreateReport1Service) Execute(params entities.Params) ([]entities.Invoi
 	}
 
 	return invoices, nil
+}
+
+func paymentStatusString(paymentStatus int) string {
+	switch paymentStatus {
+	case 1:
+		return "Pendiente"
+	case 2:
+		return "Completado"
+	default:
+		return "Revisar"
+	}
 }
