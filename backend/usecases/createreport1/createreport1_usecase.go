@@ -4,6 +4,7 @@ package createreport1
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/xuri/excelize/v2"
 
@@ -31,7 +32,7 @@ func (s *CreateReport1Service) Execute(params entities.Params) ([]entities.Invoi
 
 	cSheet := "Clinica"
 	tSheet := "Tienda"
-	pSheet := "Pendientes"
+	pSheet := "Pendientes cobradas"
 
 	f.SetSheetName("Sheet1", cSheet)
 	f.NewSheet(tSheet)
@@ -51,6 +52,7 @@ func (s *CreateReport1Service) Execute(params entities.Params) ([]entities.Invoi
 		cell, _ := excelize.CoordinatesToCellName(col+1, 1)
 		f.SetCellValue(cSheet, cell, h)
 		f.SetCellValue(tSheet, cell, h)
+		f.SetCellValue(pSheet, cell, h)
 	}
 
 	// 3. Fill rows
@@ -63,7 +65,6 @@ func (s *CreateReport1Service) Execute(params entities.Params) ([]entities.Invoi
 		row := rowC
 
 		if inv.PaymentStatus == 1 {
-			fmt.Printf("Factura pendiente: %s\n", inv.InvoiceName)
 			targetSheet = pSheet
 			row = rowP
 		} else if strings.HasPrefix(inv.InvoiceName, "T") {
@@ -75,7 +76,11 @@ func (s *CreateReport1Service) Execute(params entities.Params) ([]entities.Invoi
 		f.SetCellValue(targetSheet, fmt.Sprintf("B%d", row), inv.Client.Name+" "+inv.Client.Surname)
 		f.SetCellValue(targetSheet, fmt.Sprintf("C%d", row), inv.Pet.Name)
 		f.SetCellValue(targetSheet, fmt.Sprintf("D%d", row), inv.TotalPriceWithTax)
-		f.SetCellValue(targetSheet, fmt.Sprintf("E%d", row), inv.InvoiceDate)
+		formattedDate := inv.InvoiceDate
+		if t, err := time.Parse(time.RFC3339, inv.InvoiceDate); err == nil {
+			formattedDate = t.Format("02/01/2006")
+		}
+		f.SetCellValue(targetSheet, fmt.Sprintf("E%d", row), formattedDate)
 		f.SetCellValue(targetSheet, fmt.Sprintf("F%d", row), paymentStatusString(inv.PaymentStatus))
 
 		switch targetSheet {
