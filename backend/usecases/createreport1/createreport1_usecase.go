@@ -33,6 +33,7 @@ func (s *CreateReport1Service) Execute(params entities.Params) ([]entities.Invoi
 	tSheet := "Tienda"
 	pSheet := "Pendientes"
 
+	f.SetSheetName("Sheet1", cSheet)
 	f.NewSheet(tSheet)
 	f.NewSheet(pSheet)
 
