@@ -1,17 +1,16 @@
-// backend/usecases/listallinvoices/listAllInvoices_httphandler.go
-package listallinvoices
+// backend/usecases/listallinvoices/createreport1_httphandler.go
+package createreport1
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/MateoGlzAlon/wakyma-plugin/entities"
 )
 
-func ListAllInvoicesHttpHandler(endpoint string) {
-	invoiceService := NewListAllInvoicesService()
+func CreateReport1HttpHandler(endpoint string) {
+	reportService := NewCreateReport1Service()
 
 	http.HandleFunc(endpoint, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -40,10 +39,8 @@ func ListAllInvoicesHttpHandler(endpoint string) {
 			Limit:     limit,
 		}
 
-		fmt.Printf("listAllInvoices_Params: %+v\n", params)
-
 		w.Header().Set("Content-Type", "application/json")
-		invoices, err := invoiceService.Execute(params)
+		invoices, err := reportService.Execute(params)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

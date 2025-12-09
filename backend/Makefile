@@ -7,9 +7,13 @@ PORT      ?= 8080
 
 # Detect OS (Windows uses cmd.exe)
 ifeq ($(OS),Windows_NT)
-  SET_ENV = set PORT=$(PORT) &&
+  EXE_EXT  = .exe
+  SET_ENV  = set PORT=$(PORT) &&
+  RUN_BIN  = $(SET_ENV) "$(BUILD_DIR)\$(BINARY)$(EXE_EXT)"
 else
-  SET_ENV = PORT=$(PORT)
+  EXE_EXT  =
+  SET_ENV  = PORT=$(PORT)
+  RUN_BIN  = $(SET_ENV) ./$(BUILD_DIR)/$(BINARY)$(EXE_EXT)
 endif
 
 # ====== Default target ======
@@ -20,12 +24,12 @@ all: test build
 .PHONY: build
 build:
 	@echo ">> Building binary..."
-	$(GO) build -o $(BUILD_DIR)/$(BINARY) .
+	$(GO) build -o $(BUILD_DIR)/$(BINARY)$(EXE_EXT) .
 
 .PHONY: run
-run:
-	@echo ">> Running app on port $(PORT)..."
-	$(SET_ENV) $(GO) run .
+run: build
+	@echo ">> Running compiled binary on port $(PORT)..."
+	$(RUN_BIN)
 
 .PHONY: dev
 dev:
