@@ -1,8 +1,9 @@
-// backend/usecases/createreport1/createreport1_usecase.go
 package createreport1
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -19,6 +20,8 @@ var (
 	completedStatus = 2
 )
 
+const reportsDir = "reports"
+
 func NewCreateReport1Service() *CreateReport1Service {
 	return &CreateReport1Service{}
 }
@@ -32,40 +35,59 @@ func (s *CreateReport1Service) Execute(params entities.Params) ([]entities.Invoi
 
 	invoices := responseInvoices.Data
 
-	// 1. Group invoices by day
+	// 1. Ensure directory exists
+	if err := os.MkdirAll(reportsDir, 0o755); err != nil {
+		return nil, fmt.Errorf("could not create reports directory %q: %w", reportsDir, err)
+	}
+
+	fmt.Println("Reports will be saved in:", reportsDir)
+
+	// 2. Group invoices by day
 	invoicesByDay := make(map[string][]entities.Invoice)
 
 	for _, inv := range invoices {
 		dayKey := inv.InvoiceDate
 
 		if t, err := time.Parse(time.RFC3339, inv.InvoiceDate); err == nil {
-			dayKey = t.Format("2006-01-02")
+			dayKey = t.Format("02-01-2006")
 		}
 
 		invoicesByDay[dayKey] = append(invoicesByDay[dayKey], inv)
 	}
 
-	// 2. Create one Excel file per day
+	// 3. Create one Excel file per day
 	for day, dayInvoices := range invoicesByDay {
-		if err := createExcelForDay(day, dayInvoices); err != nil {
+		filePath, err := createExcelForDay(day, dayInvoices, reportsDir)
+		if err != nil {
 			return nil, err
 		}
+		// 4. Print where the file has been saved
+		fmt.Printf("Saved report for %s at: %s\n", day, filePath)
 	}
 
 	return invoices, nil
 }
 
-func createExcelForDay(day string, invoices []entities.Invoice) error {
-	// 1. Create Excel
+func createExcelForDay(day string, invoices []entities.Invoice, reportsDir string) (string, error) {
+	// 1. Create Excel file
 	f := excelize.NewFile()
 
 	cSheet := "Clinica"
 	tSheet := "Tienda"
 	pSheet := "Pendientes cobradas"
 
-	f.SetSheetName("Sheet1", cSheet)
-	f.NewSheet(tSheet)
-	f.NewSheet(pSheet)
+	err := f.SetSheetName("Sheet1", cSheet)
+	if err != nil {
+		return "", fmt.Errorf("error creating sheet: %w", err)
+	}
+	_, err = f.NewSheet(tSheet)
+	if err != nil {
+		return "", fmt.Errorf("error creating sheet: %w", err)
+	}
+	_, err = f.NewSheet(pSheet)
+	if err != nil {
+		return "", fmt.Errorf("error creating sheet: %w", err)
+	}
 
 	// 2. Write headers
 	headers := []string{
@@ -79,9 +101,18 @@ func createExcelForDay(day string, invoices []entities.Invoice) error {
 
 	for col, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(col+1, 1)
-		f.SetCellValue(cSheet, cell, h)
-		f.SetCellValue(tSheet, cell, h)
-		f.SetCellValue(pSheet, cell, h)
+		err := f.SetCellValue(cSheet, cell, h)
+		if err != nil {
+			return "", fmt.Errorf("error setting header value: %w", err)
+		}
+		err = f.SetCellValue(tSheet, cell, h)
+		if err != nil {
+			return "", fmt.Errorf("error setting header value: %w", err)
+		}
+		err = f.SetCellValue(pSheet, cell, h)
+		if err != nil {
+			return "", fmt.Errorf("error setting header value: %w", err)
+		}
 	}
 
 	// 3. Fill rows
@@ -101,18 +132,36 @@ func createExcelForDay(day string, invoices []entities.Invoice) error {
 			row = rowT
 		}
 
-		f.SetCellValue(targetSheet, fmt.Sprintf("A%d", row), inv.InvoiceName)
-		f.SetCellValue(targetSheet, fmt.Sprintf("B%d", row), inv.Client.Name+" "+inv.Client.Surname)
-		f.SetCellValue(targetSheet, fmt.Sprintf("C%d", row), inv.Pet.Name)
-		f.SetCellValue(targetSheet, fmt.Sprintf("D%d", row), inv.TotalPriceWithTax)
+		err := f.SetCellValue(targetSheet, fmt.Sprintf("A%d", row), inv.InvoiceName)
+		if err != nil {
+			return "", fmt.Errorf("error setting cell value: %w", err)
+		}
+		err = f.SetCellValue(targetSheet, fmt.Sprintf("B%d", row), inv.Client.Name+" "+inv.Client.Surname)
+		if err != nil {
+			return "", fmt.Errorf("error setting cell value: %w", err)
+		}
+		err = f.SetCellValue(targetSheet, fmt.Sprintf("C%d", row), inv.Pet.Name)
+		if err != nil {
+			return "", fmt.Errorf("error setting cell value: %w", err)
+		}
+		err = f.SetCellValue(targetSheet, fmt.Sprintf("D%d", row), inv.TotalPriceWithTax)
+		if err != nil {
+			return "", fmt.Errorf("error setting cell value: %w", err)
+		}
 
 		// Format invoice date for display (dd/mm/yyyy)
 		formattedDate := inv.InvoiceDate
 		if t, err := time.Parse(time.RFC3339, inv.InvoiceDate); err == nil {
 			formattedDate = t.Format("02/01/2006")
 		}
-		f.SetCellValue(targetSheet, fmt.Sprintf("E%d", row), formattedDate)
-		f.SetCellValue(targetSheet, fmt.Sprintf("F%d", row), paymentStatusString(inv.PaymentStatus))
+		err = f.SetCellValue(targetSheet, fmt.Sprintf("E%d", row), formattedDate)
+		if err != nil {
+			return "", fmt.Errorf("error setting cell value: %w", err)
+		}
+		err = f.SetCellValue(targetSheet, fmt.Sprintf("F%d", row), paymentStatusString(inv.PaymentStatus))
+		if err != nil {
+			return "", fmt.Errorf("error setting cell value: %w", err)
+		}
 
 		switch targetSheet {
 		case cSheet:
@@ -124,13 +173,14 @@ func createExcelForDay(day string, invoices []entities.Invoice) error {
 		}
 	}
 
-	// 4. Save file using the day in the filename
-	filename := fmt.Sprintf("report_%s.xlsx", day)
-	if err := f.SaveAs(filename); err != nil {
-		return fmt.Errorf("error saving Excel for day %s: %w", day, err)
+	filename := fmt.Sprintf("report1_%s.xlsx", day)
+	filePath := filepath.Join(reportsDir, filename)
+
+	if err := f.SaveAs(filePath); err != nil {
+		return "", fmt.Errorf("error saving Excel for day %s: %w", day, err)
 	}
 
-	return nil
+	return filePath, nil
 }
 
 func paymentStatusString(paymentStatus int) string {
