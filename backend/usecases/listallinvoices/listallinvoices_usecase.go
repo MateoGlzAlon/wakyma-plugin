@@ -25,8 +25,6 @@ func (s *ListAllInvoicesService) Execute(params entities.Params) (entities.Respo
 		apiKeyWakyma = os.Getenv("API_KEY_WAKYMA")
 	)
 
-	fmt.Printf("URL is: %+v\n", apiUrl)
-
 	req, err := http.NewRequest("GET", apiUrl+"/invoices", nil)
 	if err != nil {
 		return entities.Response{}, err

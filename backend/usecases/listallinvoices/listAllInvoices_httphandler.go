@@ -40,7 +40,7 @@ func ListAllInvoicesHttpHandler(endpoint string) {
 			Limit:     limit,
 		}
 
-		fmt.Printf("Params: %+v\n", params)
+		fmt.Printf("listAllInvoices_Params: %+v\n", params)
 
 		w.Header().Set("Content-Type", "application/json")
 		invoices, err := invoiceService.Execute(params)
