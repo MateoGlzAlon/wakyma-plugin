@@ -83,6 +83,8 @@ http://localhost:8080
 
 You can consult the documentation of the API in this link: [(https://vets.wakyma.com/public/api-docs/](https://vets.wakyma.com/public/api-docs/)
 
+---
+
 ## Dev Commands
 
 ```bash
