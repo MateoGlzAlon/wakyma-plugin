@@ -1,4 +1,4 @@
-// backend/usecases/listallinvoices/service.go
+// backend/usecases/listallinvoices/listallinvoices_usecase.go
 package listallinvoices
 
 import (
