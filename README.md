@@ -38,22 +38,6 @@ backend/usecases/<report-name>/
 
 ---
 
-## Adding a New Report
-
-1. Create a new folder under `usecases/`.
-2. Add:
-   - `<report>_httphandler.go`
-   - `<report>_usecase.go`
-3. Register the handler in `main.go`.
-
-Your report becomes available at:
-
-```
-GET /invoices/<report-name>
-````
-
----
-
 ## Environment Variables
 
 This file should be in the folder `backend` or in the same folder as the .exe file
